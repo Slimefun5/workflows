@@ -40,7 +40,7 @@ jobs:
             description="A Slimefun 5 Addon."
           fi
           
-          latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r '.[0].name // "v1.0.0"')
+          latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r 'if type == "array" and length > 0 then .[0].name else "v1.0.0" end')
           
           old_readme_commit=$(git log --grep="docs: remove static README" --format="%H" | head -n 1)
           if [ -n "$old_readme_commit" ]; then
