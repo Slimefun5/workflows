@@ -32,30 +32,40 @@ jobs:
           repo_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f2)
           org_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f1)
           
-          # Extract description from gradle.properties if it exists
+          description=""
           if [ -f "gradle.properties" ]; then
             description=$(grep "^description=" gradle.properties | cut -d'=' -f2- | tr -d '\r')
-          else
+          fi
+          if [ -z "$description" ]; then
             description="A Slimefun 5 Addon."
           fi
           
-          # Get latest tag for dependency example
           latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r '.[0].name // "v1.0.0"')
           
-          # Fetch the old README content from git history before it was deleted/overwritten
-          old_readme_commit=$(git log -S "docs: remove static README" --format="%H" | head -n 1)
+          old_readme_commit=$(git log --grep="docs: remove static README" --format="%H" | head -n 1)
           if [ -n "$old_readme_commit" ]; then
             git show ${old_readme_commit}^:README.md > old_content.md 2>/dev/null || touch old_content.md
           else
-            # Fallback if specific commit not found
-            first_commit=$(git rev-list --max-parents=0 HEAD | head -n 1)
-            git show ${first_commit}:README.md > old_content.md 2>/dev/null || touch old_content.md
+            old_readme_commit=$(git log --grep="port to Slimefun5" --format="%H" | head -n 1)
+            if [ -n "$old_readme_commit" ]; then
+              git show ${old_readme_commit}^:README.md > old_content.md 2>/dev/null || touch old_content.md
+            else
+              touch old_content.md
+            fi
           fi
           
-          # Remove old badges from the old content to avoid duplication
           sed -i '/img.shields.io/d' old_content.md
           sed -i '/badge.svg/d' old_content.md
           sed -i '/# '"$repo_name"'/d' old_content.md
+          sed -i '/^## Requirements/,/^## /{ /^## Requirements/d; /^## [^R]/!d; }' old_content.md
+          sed -i '/^## Developer API/,/^```$/d' old_content.md
+          sed -i '/^- Java/d' old_content.md
+          sed -i '/^- Paper/d' old_content.md
+          sed -i '/^- Slimefun/d' old_content.md
+          sed -i '/github-gradle/d' old_content.md
+          sed -i '/githubCompileOnly/d' old_content.md
+          sed -i '/^```kotlin/,/^```$/d' old_content.md
+          sed -i '/^[[:space:]]*$/N;/^\n$/d' old_content.md
           
           cat <<EOF > README.md
           # $repo_name
