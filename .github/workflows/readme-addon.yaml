@@ -2,6 +2,11 @@
 
 on:
   workflow_call:
+    inputs:
+      repository:
+        description: 'Repository name (e.g., Slimefun5/DynaTech)'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       repository:

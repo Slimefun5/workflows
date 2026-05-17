@@ -66,9 +66,6 @@ jobs:
           sed -i '/# '"$repo_name"'/d' old_content.md
           sed -i '/^[[:space:]]*$/N;/^\n$/d' old_content.md
 
-          cat <<'HEADER' > README.md
-          HEADER
-
           cat > README.md <<EOF
           # $repo_name
 
