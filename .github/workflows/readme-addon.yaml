@@ -31,7 +31,7 @@ jobs:
         run: |
           repo_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f2)
           org_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f1)
-          
+
           description=""
           if [ -f "gradle.properties" ]; then
             description=$(grep "^description=" gradle.properties | cut -d'=' -f2- | tr -d '\r')
@@ -39,9 +39,9 @@ jobs:
           if [ -z "$description" ]; then
             description="A Slimefun 5 Addon."
           fi
-          
+
           latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r 'if type == "array" and length > 0 then .[0].name else "v1.0.0" end')
-          
+
           old_readme_commit=$(git log --grep="docs: remove static README" --format="%H" | head -n 1)
           if [ -n "$old_readme_commit" ]; then
             git show ${old_readme_commit}^:README.md > old_content.md 2>/dev/null || touch old_content.md
@@ -53,55 +53,93 @@ jobs:
               touch old_content.md
             fi
           fi
-          
-          sed -i '/img.shields.io/d' old_content.md
-          sed -i '/badge.svg/d' old_content.md
-          sed -i '/# '"$repo_name"'/d' old_content.md
-          sed -i '/^## Requirements/,/^## /{ /^## Requirements/d; /^## [^R]/!d; }' old_content.md
-          sed -i '/^## Developer API/,/^```$/d' old_content.md
-          sed -i '/^- Java/d' old_content.md
-          sed -i '/^- Paper/d' old_content.md
-          sed -i '/^- Slimefun/d' old_content.md
-          sed -i '/github-gradle/d' old_content.md
-          sed -i '/githubCompileOnly/d' old_content.md
-          sed -i '/^```kotlin/,/^```$/d' old_content.md
-          sed -i '/^[[:space:]]*$/N;/^\n$/d' old_content.md
-          
-          cat <<EOF > README.md
+
+          export REPO_NAME="$repo_name"
+          python3 << 'PYEOF'
+          import re, os
+
+          repo_name = os.environ["REPO_NAME"]
+
+          if not os.path.exists("old_content.md") or os.path.getsize("old_content.md") == 0:
+              open("logo.md", "w").close()
+              exit(0)
+
+          content = open("old_content.md").read()
+
+          logo = ""
+          for m in re.finditer(r'<p align="center">\s*\n.*?</p>', content, re.DOTALL | re.IGNORECASE):
+              if "logo" in m.group(0).lower():
+                  logo = m.group(0).strip()
+                  content = content[:m.start()] + content[m.end():]
+                  break
+
+          content = re.sub(r".*img\.shields\.io.*\n?", "", content)
+          content = re.sub(r".*badge\.svg.*\n?", "", content)
+          content = re.sub(r"^#\s+" + re.escape(repo_name) + r"\s*$", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^## Requirements\s*\n(?:(?!^## ).)*", "", content, flags=re.MULTILINE | re.DOTALL)
+          content = re.sub(r"^## Developer API\s*\n(?:(?!^## ).)*", "", content, flags=re.MULTILINE | re.DOTALL)
+          content = re.sub(r"^- Java.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^- Paper.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^- Slimefun.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r".*github-gradle.*\n?", "", content)
+          content = re.sub(r".*githubCompileOnly.*\n?", "", content)
+          content = re.sub(r"```kotlin\n.*?```\n?", "", content, flags=re.DOTALL)
+          content = re.sub(r"^## Download.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"\n{3,}", "\n\n", content)
+          content = content.strip()
+
+          open("logo.md", "w").write(logo)
+          open("old_content.md", "w").write(content + "\n" if content else "")
+          PYEOF
+
+          {
+            if [ -s logo.md ]; then
+              cat logo.md
+              printf '\n\n'
+            fi
+
+            cat <<EOF
           # $repo_name
-          
+
           [![Build Status](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable/badge.svg)](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable)
           ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/$org_name/$repo_name/total)
           [![GitHub Followers](https://img.shields.io/github/followers/$org_name?style=social)](https://github.com/$org_name)
           [![GitHub Stars](https://img.shields.io/github/stars/$org_name/$repo_name?style=social)](https://github.com/$org_name/$repo_name)
-          
+
           $description
-          
+
           ## Requirements
           - Java 25
           - Paper 1.16.* - 26.1.*
           - Slimefun 5
-          
+          EOF
+
+            if [ -s old_content.md ]; then
+              printf '\n'
+              cat old_content.md
+            fi
+
+            cat <<EOF
+
           ## Developer API
-          
+
           You can easily depend on this project using [github-gradle](https://github.com/intisy/github-gradle).
-          
+
           In your \`build.gradle.kts\`:
-          
+
           \`\`\`kotlin
           plugins {
               id("io.github.intisy.github-gradle") version "1.8.2.1"
           }
-          
+
           dependencies {
               "githubCompileOnly"("$org_name:$repo_name:$latest_tag")
           }
           \`\`\`
-          
           EOF
-          
-          cat old_content.md >> README.md
-          rm old_content.md
+          } > README.md
+
+          rm -f old_content.md logo.md
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9

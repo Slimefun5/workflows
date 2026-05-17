@@ -73,20 +73,51 @@ jobs:
             fi
           fi
 
-          sed -i '/img.shields.io/d' old_content.md
-          sed -i '/badge.svg/d' old_content.md
-          sed -i '/# '"$repo_name"'/d' old_content.md
-          sed -i '/^## Requirements/,/^## /{ /^## Requirements/d; /^## [^R]/!d; }' old_content.md
-          sed -i '/^## Developer API/,/^```$/d' old_content.md
-          sed -i '/^- Java/d' old_content.md
-          sed -i '/^- Paper/d' old_content.md
-          sed -i '/^- Slimefun/d' old_content.md
-          sed -i '/github-gradle/d' old_content.md
-          sed -i '/githubCompileOnly/d' old_content.md
-          sed -i '/^```kotlin/,/^```$/d' old_content.md
-          sed -i '/^[[:space:]]*$/N;/^\n$/d' old_content.md
+          export REPO_NAME="$repo_name"
+          python3 << 'PYEOF'
+          import re, os
 
-          cat > README.md <<EOF
+          repo_name = os.environ["REPO_NAME"]
+
+          if not os.path.exists("old_content.md") or os.path.getsize("old_content.md") == 0:
+              open("logo.md", "w").close()
+              exit(0)
+
+          content = open("old_content.md").read()
+
+          logo = ""
+          for m in re.finditer(r'<p align="center">\s*\n.*?</p>', content, re.DOTALL | re.IGNORECASE):
+              if "logo" in m.group(0).lower():
+                  logo = m.group(0).strip()
+                  content = content[:m.start()] + content[m.end():]
+                  break
+
+          content = re.sub(r".*img\.shields\.io.*\n?", "", content)
+          content = re.sub(r".*badge\.svg.*\n?", "", content)
+          content = re.sub(r"^#\s+" + re.escape(repo_name) + r"\s*$", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^## Requirements\s*\n(?:(?!^## ).)*", "", content, flags=re.MULTILINE | re.DOTALL)
+          content = re.sub(r"^## Developer API\s*\n(?:(?!^## ).)*", "", content, flags=re.MULTILINE | re.DOTALL)
+          content = re.sub(r"^- Java.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^- Paper.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^- Slimefun.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r".*github-gradle.*\n?", "", content)
+          content = re.sub(r".*githubCompileOnly.*\n?", "", content)
+          content = re.sub(r"```kotlin\n.*?```\n?", "", content, flags=re.DOTALL)
+          content = re.sub(r"^## Download.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"\n{3,}", "\n\n", content)
+          content = content.strip()
+
+          open("logo.md", "w").write(logo)
+          open("old_content.md", "w").write(content + "\n" if content else "")
+          PYEOF
+
+          {
+            if [ -s logo.md ]; then
+              cat logo.md
+              printf '\n\n'
+            fi
+
+            cat <<EOF
           # $repo_name
 
           [![Build Status](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable/badge.svg)](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable)
@@ -100,6 +131,14 @@ jobs:
           - Java 25
           - Paper 1.16.* - 26.1.*
           - Slimefun 5
+          EOF
+
+            if [ -s old_content.md ]; then
+              printf '\n'
+              cat old_content.md
+            fi
+
+            cat <<EOF
 
           ## Developer API
 
@@ -116,11 +155,10 @@ jobs:
               "githubCompileOnly"("$org_name:$repo_name:$latest_tag")
           }
           \`\`\`
-
           EOF
+          } > README.md
 
-          cat old_content.md >> README.md
-          rm -f old_content.md
+          rm -f old_content.md logo.md
 
       - name: Commit and push
         run: |
