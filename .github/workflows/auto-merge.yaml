@@ -1,0 +1,25 @@
+name: Auto Merge Experimental to Stable
+
+on:
+  workflow_call:
+
+jobs:
+  merge-experimental-to-stable:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout stable
+        uses: actions/checkout@v4
+        with:
+          ref: stable
+          fetch-depth: 0
+
+      - name: Merge experimental into stable
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin experimental
+          git merge origin/experimental --allow-unrelated-histories -m "chore: auto-merge experimental to stable"
+          git push origin stable

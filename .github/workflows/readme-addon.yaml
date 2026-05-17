@@ -15,10 +15,11 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout experimental branch
+      - name: Checkout stable branch
         uses: actions/checkout@v4
         with:
-          ref: experimental
+          ref: stable
+          fetch-depth: 0
 
       - name: Generate README.md
         run: |
@@ -35,9 +36,25 @@ jobs:
           # Get latest tag for dependency example
           latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r '.[0].name // "v1.0.0"')
           
+          # Fetch the old README content from git history before it was deleted/overwritten
+          old_readme_commit=$(git log -S "docs: remove static README" --format="%H" | head -n 1)
+          if [ -n "$old_readme_commit" ]; then
+            git show ${old_readme_commit}^:README.md > old_content.md 2>/dev/null || touch old_content.md
+          else
+            # Fallback if specific commit not found
+            first_commit=$(git rev-list --max-parents=0 HEAD | head -n 1)
+            git show ${first_commit}:README.md > old_content.md 2>/dev/null || touch old_content.md
+          fi
+          
+          # Remove old badges from the old content to avoid duplication
+          sed -i '/img.shields.io/d' old_content.md
+          sed -i '/badge.svg/d' old_content.md
+          sed -i '/# '"$repo_name"'/d' old_content.md
+          
           cat <<EOF > README.md
           # $repo_name
           
+          [![Build Status](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable/badge.svg)](https://Slimefun5.github.io/builds/$org_name/$repo_name/stable)
           ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/$org_name/$repo_name/total)
           [![GitHub Followers](https://img.shields.io/github/followers/$org_name?style=social)](https://github.com/$org_name)
           [![GitHub Stars](https://img.shields.io/github/stars/$org_name/$repo_name?style=social)](https://github.com/$org_name/$repo_name)
@@ -46,7 +63,7 @@ jobs:
           
           ## Requirements
           - Java 25
-          - Paper 1.21.x
+          - Paper 1.16.* - 26.1.*
           - Slimefun 5
           
           ## Developer API
@@ -64,7 +81,11 @@ jobs:
               "githubCompileOnly"("$org_name:$repo_name:$latest_tag")
           }
           \`\`\`
+          
           EOF
+          
+          cat old_content.md >> README.md
+          rm old_content.md
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9
