@@ -85,6 +85,11 @@ jobs:
           content = re.sub(r".*githubCompileOnly.*\n?", "", content)
           content = re.sub(r"```kotlin\n.*?```\n?", "", content, flags=re.DOTALL)
           content = re.sub(r"^## Download.*\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^" + re.escape(repo_name) + r" is a .+?(?=\n\n|\n##|\Z)", "", content, flags=re.MULTILINE | re.DOTALL)
+          content = re.sub(r"\| *UNOFFICIAL *\|.*?\n", "", content)
+          content = re.sub(r"^\|.*Slimefun5.*Minecraft.*\|$\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^\|[-| ]+\|$\n?", "", content, flags=re.MULTILINE)
+          content = re.sub(r"^Place the JAR in your.*\n?", "", content, flags=re.MULTILINE)
           content = re.sub(r"\n{3,}", "\n\n", content)
           content = content.strip()
 
