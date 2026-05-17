@@ -1,0 +1,74 @@
+﻿name: Generate README
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: 'Repository name (e.g., Slimefun5/DynaTech)'
+        required: true
+        type: string
+
+jobs:
+  generate-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout experimental branch
+        uses: actions/checkout@v4
+        with:
+          ref: experimental
+
+      - name: Generate README.md
+        run: |
+          repo_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f2)
+          org_name=$(echo "${{ inputs.repository }}" | cut -d'/' -f1)
+          
+          # Extract description from gradle.properties if it exists
+          if [ -f "gradle.properties" ]; then
+            description=$(grep "^description=" gradle.properties | cut -d'=' -f2- | tr -d '\r')
+          else
+            description="A Slimefun 5 Addon."
+          fi
+          
+          # Get latest tag for dependency example
+          latest_tag=$(curl -s https://api.github.com/repos/${{ inputs.repository }}/tags | jq -r '.[0].name // "v1.0.0"')
+          
+          cat <<EOF > README.md
+          # $repo_name
+          
+          ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/$org_name/$repo_name/total)
+          [![GitHub Followers](https://img.shields.io/github/followers/$org_name?style=social)](https://github.com/$org_name)
+          [![GitHub Stars](https://img.shields.io/github/stars/$org_name/$repo_name?style=social)](https://github.com/$org_name/$repo_name)
+          
+          $description
+          
+          ## Requirements
+          - Java 25
+          - Paper 1.21.x
+          - Slimefun 5
+          
+          ## Developer API
+          
+          You can easily depend on this project using [github-gradle](https://github.com/intisy/github-gradle).
+          
+          In your \`build.gradle.kts\`:
+          
+          \`\`\`kotlin
+          plugins {
+              id("io.github.intisy.github-gradle") version "1.8.2.1"
+          }
+          
+          dependencies {
+              "githubCompileOnly"("$org_name:$repo_name:$latest_tag")
+          }
+          \`\`\`
+          EOF
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: 'docs: auto-generate README.md [skip ci]'
+          add: 'README.md'
+          default_author: github_actions
