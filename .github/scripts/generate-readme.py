@@ -5,7 +5,7 @@ Usage: python3 generate-readme.py --repository Slimefun5/SlimeTinker
 
 Reads from CWD:
   gradle.properties    -> description
-  .github/readme.yml   -> logo, java, paper, gradle_plugin, description (override)
+  .github/docs-config.yml -> logo, java, paper, gradle_plugin, description (override)
   CONTENT.md           -> custom content (features, credits, etc.)
 
 Fetches from GitHub API:
@@ -75,7 +75,7 @@ def main():
     args = parser.parse_args()
 
     org_name, repo_name = args.repository.split("/")
-    config = parse_config(".github/readme.yml")
+    config = parse_config(".github/docs-config.yml")
 
     description = (
         config.get("description")
