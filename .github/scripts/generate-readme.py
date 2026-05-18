@@ -82,8 +82,8 @@ def main():
         or read_gradle_description()
         or "A Slimefun 5 Addon."
     )
-    java = config.get("java", "17+")
-    paper = config.get("paper", "1.16.* - 1.20.*")
+    java = config.get("java", "25")
+    paper = config.get("paper", "1.16.* - 26.1.*")
     gradle_plugin = config.get("gradle_plugin", "1.8.2.1")
     logo = config.get("logo", "")
     latest_tag = fetch_latest_tag(args.repository)
@@ -113,12 +113,11 @@ def main():
 
     sections.append(description)
 
-    sections.append(
-        f"## Requirements\n"
-        f"- Java {java}\n"
-        f"- Paper {paper}\n"
-        f"- Slimefun 5"
-    )
+    is_core = repo_name.lower() in ("slimefun5", "slimefun")
+    req_lines = f"## Requirements\n- Java {java}\n- Paper {paper}"
+    if not is_core:
+        req_lines += "\n- [Slimefun 5](https://github.com/Slimefun5/Slimefun5)"
+    sections.append(req_lines)
 
     if content:
         sections.append(content)
