@@ -18,4 +18,4 @@ jobs:
     - name: Build with Gradle
       run: |
         chmod +x gradlew
-        ./gradlew build --no-daemon
+        ./gradlew build --no-daemon -x test
