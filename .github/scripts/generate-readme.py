@@ -82,8 +82,8 @@ def main():
         or read_gradle_description()
         or "A Slimefun 5 Addon."
     )
-    java = config.get("java", "25")
-    paper = config.get("paper", "1.16.* - 26.1.*")
+    java = config.get("java", "17+")
+    paper = config.get("paper", "1.16.* - 1.20.*")
     gradle_plugin = config.get("gradle_plugin", "1.8.2.1")
     logo = config.get("logo", "")
     latest_tag = fetch_latest_tag(args.repository)
@@ -136,6 +136,26 @@ def main():
         f'    "githubCompileOnly"("{org_name}:{repo_name}:{latest_tag}")\n'
         f"}}\n"
         f"```"
+    )
+
+    sections.append(
+        f"## Wiki\n\n"
+        f"[Read more on the Slimefun Wiki...](https://github.com/Slimefun5/Wiki/wiki/{repo_name})"
+    )
+
+    sections.append(
+        f"## Discord\n\n"
+        f"You can find Slimefun's community on Discord! Click the badge below to join the server for suggestions/questions or other discussions about this plugin.\n\n"
+        f'<p align="center">\n'
+        f'  <a href="https://discord.gg/fsD4Bkh">\n'
+        f'    <img src="https://discordapp.com/api/guilds/738626600539160576/widget.png?style=banner2" alt="Discord"/>\n'
+        f'  </a>\n'
+        f'</p>'
+    )
+
+    sections.append(
+        f"## License\n\n"
+        f"This project is open-source and licensed under the MIT License."
     )
 
     readme = "\n\n".join(sections) + "\n"
