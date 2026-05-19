@@ -101,24 +101,7 @@ def main():
     sections.append(f"# {repo_name}")
 
 
-    BSTATS_IDS = {
-        "slimetinker": 31392,
-        "networks": 31391,
-        "slimefun5": 31272,
-        "slimefunadvancements": 31436,
-        "sensibletoolbox": 31393,
-        "missilewarfare": 31437,
-        "luckyblocks": 31438,
-        "infinitylib": 31439,
-        "litexpansion": 7111,
-        "infinityexpansion": 8991,
-        "galactifun": 11613,
-        "fluffymachines": 8927,
-        "extragear": 6469,
-        "exoticgarden": 4575,
-        "dynatech": 31440,
-        "chestterminal": 5503
-    }
+    
 
     badges = (
         f"[![Build Status](https://Slimefun5.github.io/builds/{org_name}/{repo_name}/stable/badge.svg)]"
