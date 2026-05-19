@@ -100,7 +100,27 @@ def main():
 
     sections.append(f"# {repo_name}")
 
-    sections.append(
+
+    BSTATS_IDS = {
+        "slimetinker": 31392,
+        "networks": 31391,
+        "slimefun5": 31272,
+        "slimefunadvancements": 31436,
+        "sensibletoolbox": 31393,
+        "missilewarfare": 31437,
+        "luckyblocks": 31438,
+        "infinitylib": 31439,
+        "litexpansion": 7111,
+        "infinityexpansion": 8991,
+        "galactifun": 11613,
+        "fluffymachines": 8927,
+        "extragear": 6469,
+        "exoticgarden": 4575,
+        "dynatech": 31440,
+        "chestterminal": 5503
+    }
+
+    badges = (
         f"[![Build Status](https://Slimefun5.github.io/builds/{org_name}/{repo_name}/stable/badge.svg)]"
         f"(https://Slimefun5.github.io/builds/{org_name}/{repo_name}/stable)\n"
         f"![GitHub Downloads (all assets, all releases)]"
@@ -110,6 +130,15 @@ def main():
         f"[![GitHub Stars](https://img.shields.io/github/stars/{org_name}/{repo_name}?style=social)]"
         f"(https://github.com/{org_name}/{repo_name})"
     )
+
+    bstats_id = BSTATS_IDS.get(repo_name.lower())
+    if bstats_id:
+        badges += (
+            f"\n[![bStats](https://bStats.org/signatures/bukkit/{repo_name}.svg)]"
+            f"(https://bStats.org/plugin/bukkit/{repo_name}/{bstats_id})"
+        )
+
+    sections.append(badges)
 
     sections.append(description)
 
