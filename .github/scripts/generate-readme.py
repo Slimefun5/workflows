@@ -19,6 +19,19 @@ import sys
 import urllib.request
 
 
+# bStats plugin name + project id per repo (key = repo name, lowercased). The signature SVG and
+# plugin link both key off the bStats-registered plugin name (the plugin.yml name), which differs
+# from the GitHub repo name for some addons. Repos absent here simply get no bStats badge.
+BSTATS_IDS = {
+    "slimefun5": ("Slimefun", 31272),
+    "infinitylib": ("InfinityLib", 31439),
+    "dynatech": ("DynaTech", 31440),
+    "slimefunadvancements": ("SFAdvancements", 31436),
+    "missilewarfare": ("MissileWarfare", 31437),
+    "luckyblocks": ("SlimefunLuckyBlocks", 31438),
+}
+
+
 def parse_config(path):
     """Parse flat key-value YAML without requiring pyyaml."""
     config = {}
@@ -114,11 +127,12 @@ def main():
         f"(https://github.com/{org_name}/{repo_name})"
     )
 
-    bstats_id = BSTATS_IDS.get(repo_name.lower())
-    if bstats_id:
+    bstats = BSTATS_IDS.get(repo_name.lower())
+    if bstats:
+        bstats_name, bstats_id = bstats
         badges += (
-            f"\n[![bStats](https://bStats.org/signatures/bukkit/{repo_name}.svg)]"
-            f"(https://bStats.org/plugin/bukkit/{repo_name}/{bstats_id})"
+            f"\n[![bStats](https://bStats.org/signatures/bukkit/{bstats_name}.svg)]"
+            f"(https://bStats.org/plugin/bukkit/{bstats_name}/{bstats_id})"
         )
 
     sections.append(badges)
