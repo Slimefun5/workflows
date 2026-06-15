@@ -109,6 +109,17 @@ jobs:
           game-versions: ${{ inputs.modrinth_game_versions }}
           loaders: ${{ inputs.modrinth_loaders }}
 
+      - name: Create GitHub release with the jar
+        if: ${{ inputs.github_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.stage.outputs.file }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ inputs.project_name }} ${{ github.ref_name }}
+          generate_release_notes: true
+
+      # Hangar last: its version validation is the most finicky, so a Hangar failure must not
+      # block Modrinth or the GitHub release above.
       - name: Publish to Hangar (skips if slug unset)
         if: ${{ vars.HANGAR_ID != '' }}
         uses: milkdrinkers/Hangar-Publish@v2
@@ -122,12 +133,3 @@ jobs:
               { "path": "${{ steps.stage.outputs.file }}", "platforms": ["PAPER"] }
             ]
           platform_dependencies: ${{ inputs.hangar_platform_versions }}
-
-      - name: Create GitHub release with the jar
-        if: ${{ inputs.github_release }}
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.stage.outputs.file }}
-          tag_name: ${{ github.ref_name }}
-          name: ${{ inputs.project_name }} ${{ github.ref_name }}
-          generate_release_notes: true
