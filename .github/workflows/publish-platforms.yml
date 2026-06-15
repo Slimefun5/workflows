@@ -1,13 +1,13 @@
 name: Publish to platforms
 
 # Reusable publish workflow shared by every Slimefun plugin (core + addons).
-# Builds the jar once, then publishes it to Modrinth + Hangar and creates the GitHub release.
-# mc-publish auto-skips any platform whose id/token is empty, so it is a no-op until set:
+# Builds the jar once, stages a single clean copy, then publishes to Modrinth + Hangar and
+# (optionally) creates the GitHub release. Each platform is skipped if its credentials are unset:
 #   Secrets:   MODRINTH_TOKEN, HANGAR_TOKEN   (PAT optional, for cross-repo dependency reads)
 #   Variables: MODRINTH_ID (project slug), HANGAR_ID (project slug only)
 # SpigotMC has no upload API and cannot be automated here - upload that jar manually.
 #
-# Callers pass only what differs from the addon defaults (the core overrides task/glob/name).
+# NOTE: mc-publish does NOT support Hangar; Hangar uses milkdrinkers/Hangar-Publish.
 
 on:
   workflow_call:
@@ -17,7 +17,6 @@ on:
         required: true
         type: string
       java_version:
-        description: "JDK used to build"
         required: false
         default: "21"
         type: string
@@ -26,13 +25,12 @@ on:
         required: false
         default: "shadowJar"
         type: string
-      jar_glob:
-        description: "Glob matching the jar(s) to publish"
+      jar_dir:
+        description: "Directory containing the built jar (the shaded jar, minus -sources/-javadoc)"
         required: false
-        default: "build/libs/!(*-sources|*-javadoc).jar"
+        default: "build/libs"
         type: string
-      game_versions:
-        description: "Newline-separated Minecraft versions to list"
+      modrinth_game_versions:
         required: false
         default: |
           1.8.9
@@ -40,16 +38,24 @@ on:
           1.20.6
           1.21.4
         type: string
-      loaders:
-        description: "Newline-separated loaders to list"
+      modrinth_loaders:
         required: false
         default: |
           paper
           spigot
           bukkit
         type: string
+      hangar_channel:
+        required: false
+        default: "Release"
+        type: string
+      hangar_platform_versions:
+        description: "JSON of Hangar platform -> supported version ranges"
+        required: false
+        default: '{"PAPER": [">=1.8"]}'
+        type: string
       github_release:
-        description: "Create the GitHub release here. Set false for dependency repos whose publish.yml (publishGithub) already owns the release."
+        description: "Create the GitHub release here. Set false for dependency repos whose publish.yml already owns the release."
         required: false
         default: true
         type: boolean
@@ -80,25 +86,48 @@ jobs:
           # PAT covers cross-repo dependency reads (github-gradle release assets); falls back to the default token.
           GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
-      - name: Publish to Modrinth + Hangar (skips a platform if its id/token is unset)
+      - name: Stage a single clean jar
+        id: stage
+        run: |
+          mkdir -p upload
+          jar=$(ls "${{ inputs.jar_dir }}"/*.jar | grep -vE '(-sources|-javadoc)\.jar$' | head -1)
+          if [ -z "$jar" ]; then echo "::error::No jar found in ${{ inputs.jar_dir }}"; exit 1; fi
+          dest="upload/${{ inputs.project_name }}-${{ github.ref_name }}.jar"
+          cp "$jar" "$dest"
+          echo "file=$dest" >> "$GITHUB_OUTPUT"
+          echo "Staged $jar -> $dest"
+
+      - name: Publish to Modrinth (skips if id/token unset)
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          files: ${{ inputs.jar_glob }}
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: ${{ steps.stage.outputs.file }}
           name: ${{ inputs.project_name }} ${{ github.ref_name }}
           version: ${{ github.ref_name }}
           version-type: release
-          game-versions: ${{ inputs.game_versions }}
-          loaders: ${{ inputs.loaders }}
-          modrinth-id: ${{ vars.MODRINTH_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          hangar-id: ${{ vars.HANGAR_ID }}
-          hangar-token: ${{ secrets.HANGAR_TOKEN }}
+          game-versions: ${{ inputs.modrinth_game_versions }}
+          loaders: ${{ inputs.modrinth_loaders }}
+
+      - name: Publish to Hangar (skips if slug unset)
+        if: ${{ vars.HANGAR_ID != '' }}
+        uses: milkdrinkers/Hangar-Publish@v2
+        with:
+          api_token: ${{ secrets.HANGAR_TOKEN }}
+          slug: ${{ vars.HANGAR_ID }}
+          version: ${{ github.ref_name }}
+          channel: ${{ inputs.hangar_channel }}
+          files: |
+            [
+              { "path": "${{ steps.stage.outputs.file }}", "platforms": ["PAPER"] }
+            ]
+          platform_dependencies: ${{ inputs.hangar_platform_versions }}
 
       - name: Create GitHub release with the jar
         if: ${{ inputs.github_release }}
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ inputs.jar_glob }}
+          files: ${{ steps.stage.outputs.file }}
           tag_name: ${{ github.ref_name }}
           name: ${{ inputs.project_name }} ${{ github.ref_name }}
           generate_release_notes: true
