@@ -48,6 +48,11 @@ on:
           spigot
           bukkit
         type: string
+      github_release:
+        description: "Create the GitHub release here. Set false for dependency repos whose publish.yml (publishGithub) already owns the release."
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   publish:
@@ -90,6 +95,7 @@ jobs:
           hangar-token: ${{ secrets.HANGAR_TOKEN }}
 
       - name: Create GitHub release with the jar
+        if: ${{ inputs.github_release }}
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ inputs.jar_glob }}
