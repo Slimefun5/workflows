@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import sys
+import urllib.parse
 import urllib.request
 
 
@@ -120,9 +121,13 @@ def main():
     bstats_id = config.get("bstats")
     if bstats_id:
         bstats_name = config.get("bstats_name", repo_name)
+        # URL-encode the name: the signature SVG is keyed by the bStats plugin name, which may
+        # contain spaces (e.g. "Slimefun 5" -> "Slimefun%205"). An unencoded space breaks the badge
+        # and a wrong/old name (e.g. "Slimefun") resolves to a different plugin's graph.
+        bstats_url_name = urllib.parse.quote(bstats_name)
         badges += (
-            f"\n[![bStats](https://bStats.org/signatures/bukkit/{bstats_name}.svg)]"
-            f"(https://bStats.org/plugin/bukkit/{bstats_name}/{bstats_id})"
+            f"\n[![bStats](https://bStats.org/signatures/bukkit/{bstats_url_name}.svg)]"
+            f"(https://bStats.org/plugin/bukkit/{bstats_url_name}/{bstats_id})"
         )
 
     sections.append(badges)
