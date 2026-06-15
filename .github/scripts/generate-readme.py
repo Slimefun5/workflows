@@ -114,11 +114,15 @@ def main():
         f"(https://github.com/{org_name}/{repo_name})"
     )
 
-    bstats_id = BSTATS_IDS.get(repo_name.lower())
+    # bStats id + plugin name come from the repo's own .github/docs-config.yml (data-driven, not a
+    # hardcoded table). bstats_name defaults to the repo name but can differ (e.g. the bStats project
+    # for LuckyBlocks is "SlimefunLuckyBlocks", for Slimefun5 it is "Slimefun").
+    bstats_id = config.get("bstats")
     if bstats_id:
+        bstats_name = config.get("bstats_name", repo_name)
         badges += (
-            f"\n[![bStats](https://bStats.org/signatures/bukkit/{repo_name}.svg)]"
-            f"(https://bStats.org/plugin/bukkit/{repo_name}/{bstats_id})"
+            f"\n[![bStats](https://bStats.org/signatures/bukkit/{bstats_name}.svg)]"
+            f"(https://bStats.org/plugin/bukkit/{bstats_name}/{bstats_id})"
         )
 
     sections.append(badges)
