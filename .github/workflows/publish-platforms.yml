@@ -1,0 +1,98 @@
+name: Publish to platforms
+
+# Reusable publish workflow shared by every Slimefun plugin (core + addons).
+# Builds the jar once, then publishes it to Modrinth + Hangar and creates the GitHub release.
+# mc-publish auto-skips any platform whose id/token is empty, so it is a no-op until set:
+#   Secrets:   MODRINTH_TOKEN, HANGAR_TOKEN   (PAT optional, for cross-repo dependency reads)
+#   Variables: MODRINTH_ID (project slug), HANGAR_ID (project slug only)
+# SpigotMC has no upload API and cannot be automated here - upload that jar manually.
+#
+# Callers pass only what differs from the addon defaults (the core overrides task/glob/name).
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        description: "Display name used for the release/version title"
+        required: true
+        type: string
+      java_version:
+        description: "JDK used to build"
+        required: false
+        default: "21"
+        type: string
+      gradle_task:
+        description: "Gradle task that produces the shaded jar"
+        required: false
+        default: "shadowJar"
+        type: string
+      jar_glob:
+        description: "Glob matching the jar(s) to publish"
+        required: false
+        default: "build/libs/!(*-sources|*-javadoc).jar"
+        type: string
+      game_versions:
+        description: "Newline-separated Minecraft versions to list"
+        required: false
+        default: |
+          1.8.9
+          1.16.5
+          1.20.6
+          1.21.4
+        type: string
+      loaders:
+        description: "Newline-separated loaders to list"
+        required: false
+        default: |
+          paper
+          spigot
+          bukkit
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ inputs.java_version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java_version }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build jar (version from the release tag)
+        run: ./gradlew ${{ inputs.gradle_task }} -Partifact_version=${{ github.ref_name }} --no-daemon
+        env:
+          # PAT covers cross-repo dependency reads (github-gradle release assets); falls back to the default token.
+          GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Modrinth + Hangar (skips a platform if its id/token is unset)
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          files: ${{ inputs.jar_glob }}
+          name: ${{ inputs.project_name }} ${{ github.ref_name }}
+          version: ${{ github.ref_name }}
+          version-type: release
+          game-versions: ${{ inputs.game_versions }}
+          loaders: ${{ inputs.loaders }}
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          hangar-id: ${{ vars.HANGAR_ID }}
+          hangar-token: ${{ secrets.HANGAR_TOKEN }}
+
+      - name: Create GitHub release with the jar
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ inputs.jar_glob }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ inputs.project_name }} ${{ github.ref_name }}
+          generate_release_notes: true
