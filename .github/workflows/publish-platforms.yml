@@ -170,6 +170,7 @@ jobs:
           echo "Staged $jar -> $dest"
 
       - name: Publish to Modrinth (skips if id/token unset)
+        if: ${{ vars.MODRINTH_ID != '' }}
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: ${{ vars.MODRINTH_ID }}
