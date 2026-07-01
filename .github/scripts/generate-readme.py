@@ -163,12 +163,16 @@ def main():
         f"[Read more on the Slimefun Wiki...](https://github.com/Slimefun5/Wiki/wiki/{repo_name})"
     )
 
+    # Data-driven from the repo's .github/docs-config.yml (discord = invite, discord_guild = widget id);
+    # falls back to the upstream Slimefun server so repos that don't set them are unaffected.
+    discord_invite = config.get("discord", "https://discord.gg/fsD4Bkh")
+    discord_guild = config.get("discord_guild", "738626600539160576")
     sections.append(
         f"## Discord\n\n"
         f"You can find Slimefun's community on Discord! Click the badge below to join the server for suggestions/questions or other discussions about this plugin.\n\n"
         f'<p align="center">\n'
-        f'  <a href="https://discord.gg/fsD4Bkh">\n'
-        f'    <img src="https://discordapp.com/api/guilds/738626600539160576/widget.png?style=banner2" alt="Discord"/>\n'
+        f'  <a href="{discord_invite}">\n'
+        f'    <img src="https://discordapp.com/api/guilds/{discord_guild}/widget.png?style=banner2" alt="Discord"/>\n'
         f'  </a>\n'
         f'</p>'
     )
