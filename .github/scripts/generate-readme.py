@@ -165,7 +165,7 @@ def main():
 
     # Data-driven from the repo's .github/docs-config.yml (discord = invite, discord_guild = widget id);
     # falls back to the upstream Slimefun server so repos that don't set them are unaffected.
-    discord_invite = config.get("discord", "https://discord.gg/fsD4Bkh")
+    discord_invite = config.get("discord", "https://discord.gg/CbBYZBEWdR")
     discord_guild = config.get("discord_guild", "738626600539160576")
     sections.append(
         f"## Discord\n\n"
