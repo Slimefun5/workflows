@@ -152,8 +152,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # Strip a leading "v" from the tag so the version (and every artifact/display name derived from it)
+      # is clean: tag "v1.2.3" -> version "1.2.3". The tag itself is still used verbatim for tag_name.
+      - name: Resolve version (strip leading v)
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Build jar (version from the release tag)
-        run: ./gradlew ${{ inputs.gradle_task }} -Partifact_version=${{ github.ref_name }} --no-daemon
+        run: ./gradlew ${{ inputs.gradle_task }} -Partifact_version=${{ steps.ver.outputs.version }} --no-daemon
         env:
           # PAT covers cross-repo dependency reads (github-gradle release assets); falls back to the default token.
           GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
@@ -164,7 +170,7 @@ jobs:
           mkdir -p upload
           jar=$(ls "${{ inputs.jar_dir }}"/*.jar | grep -vE '(-sources|-javadoc)\.jar$' | head -1)
           if [ -z "$jar" ]; then echo "::error::No jar found in ${{ inputs.jar_dir }}"; exit 1; fi
-          dest="upload/${{ inputs.project_name }}-${{ github.ref_name }}.jar"
+          dest="upload/${{ inputs.project_name }}-${{ steps.ver.outputs.version }}.jar"
           cp "$jar" "$dest"
           echo "file=$dest" >> "$GITHUB_OUTPUT"
           echo "Staged $jar -> $dest"
@@ -176,8 +182,8 @@ jobs:
           modrinth-id: ${{ vars.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: ${{ steps.stage.outputs.file }}
-          name: ${{ inputs.project_name }} ${{ github.ref_name }}
-          version: ${{ github.ref_name }}
+          name: ${{ inputs.project_name }} ${{ steps.ver.outputs.version }}
+          version: ${{ steps.ver.outputs.version }}
           version-type: release
           game-versions: ${{ inputs.modrinth_game_versions }}
           loaders: ${{ inputs.modrinth_loaders }}
@@ -188,7 +194,7 @@ jobs:
         with:
           files: ${{ steps.stage.outputs.file }}
           tag_name: ${{ github.ref_name }}
-          name: ${{ inputs.project_name }} ${{ github.ref_name }}
+          name: ${{ inputs.project_name }} ${{ steps.ver.outputs.version }}
           generate_release_notes: true
 
       # Hangar last: its version validation is the most finicky, so a Hangar failure must not
@@ -199,7 +205,7 @@ jobs:
         with:
           api_token: ${{ secrets.HANGAR_TOKEN }}
           slug: ${{ vars.HANGAR_ID }}
-          version: ${{ github.ref_name }}
+          version: ${{ steps.ver.outputs.version }}
           channel: ${{ inputs.hangar_channel }}
           files: |
             [
