@@ -1,5 +1,12 @@
 name: Auto Merge Experimental to Stable
 
+# Brings experimental's content onto stable on a release tag, then regenerates the README.
+# stable is a mirror of experimental + a generated README.md, so we take experimental's tree
+# WHOLESALE (git read-tree --reset) rather than a 3-way merge — a 3-way merge conflicts on the
+# generated README.md vs the source CONTENT.md (rename/content) and used to commit conflict markers.
+# The merge parent is preserved via `merge -s ours`. experimental has no README.md; it is generated
+# here after the merge (a GITHUB_TOKEN push does NOT re-trigger readme.yaml, so we generate it).
+
 on:
   workflow_call:
     inputs:
@@ -21,40 +28,28 @@ jobs:
           ref: stable
           fetch-depth: 0
 
-      - name: Save stable README
+      - name: Merge experimental into stable (tree = experimental)
         run: |
-          if [ -f "README.md" ]; then
-            cp README.md README.md.stable-backup
-          fi
-
-      - name: Merge experimental into stable
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin experimental
-          if ! git merge origin/experimental --allow-unrelated-histories -m "chore: auto-merge experimental to stable"; then
-            git checkout --ours README.md 2>/dev/null || true
-            git checkout --ours .github/workflows/ 2>/dev/null || true
-            git add -A
-            git commit --no-edit
+          if git merge --ff-only origin/experimental; then
+            echo "Fast-forwarded stable to experimental."
+          else
+            echo "Divergent: recording a merge whose tree equals experimental."
+            git merge -s ours --no-commit --allow-unrelated-histories origin/experimental
+            git read-tree --reset -u origin/experimental
+            git commit --no-edit -m "chore: auto-merge experimental to stable"
           fi
 
-      - name: Restore stable README
+      - name: Regenerate README on stable
         run: |
-          if [ -f "README.md.stable-backup" ]; then
-            cp README.md.stable-backup README.md
-            rm README.md.stable-backup
+          curl -sL https://raw.githubusercontent.com/Slimefun5/workflows/stable/.github/scripts/generate-readme.py -o /tmp/generate-readme.py
+          python3 /tmp/generate-readme.py --repository "${{ inputs.repository }}"
+          if [ -n "$(git status --porcelain README.md)" ]; then
+            git add README.md
+            git commit -m "docs: auto-generate README.md [skip ci]"
           fi
 
-      - name: Fetch generator script
-        run: curl -sL https://raw.githubusercontent.com/Slimefun5/workflows/stable/.github/scripts/generate-readme.py -o generate-readme.py
-
-      - name: Generate README
-        run: python3 generate-readme.py --repository "${{ inputs.repository }}"
-
-      - name: Commit and push
-        run: |
-          git add README.md
-          git rm -f README.md.stable-backup 2>/dev/null || true
-          git commit -m "chore: auto-merge experimental to stable with readme generation [skip ci]" --allow-empty
-          git push origin stable
+      - name: Push stable
+        run: git push origin stable
