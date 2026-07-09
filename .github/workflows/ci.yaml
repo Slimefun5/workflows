@@ -19,3 +19,6 @@ jobs:
       run: |
         chmod +x gradlew
         ./gradlew build --no-daemon -x test
+      env:
+        # github-gradle shells out to `gh` to resolve cross-repo release assets (e.g. Slimefun5/dough); it needs a token.
+        GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
