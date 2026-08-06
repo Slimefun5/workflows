@@ -39,6 +39,31 @@ def parse_config(path):
     return config
 
 
+def detect_license(config):
+    """Determine the project's license name for the README.
+
+    Priority: an explicit ``license`` key in docs-config.yml, else the checked-out LICENSE file,
+    else the project default (GPL-3.0). This fixes READMEs previously hardcoded to "MIT" - the
+    fork and its addons are GPL-3.0 (Slimefun is GPL-3.0), but any addon can override.
+    """
+    if config.get("license"):
+        return config["license"]
+
+    for name in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"):
+        if os.path.exists(name):
+            with open(name, encoding="utf-8", errors="ignore") as f:
+                head = f.read(4000).upper()
+            if "GNU GENERAL PUBLIC LICENSE" in head:
+                return "GNU General Public License v3.0" if "VERSION 3" in head else "GNU General Public License"
+            if "APACHE LICENSE" in head:
+                return "Apache License 2.0"
+            if "MIT LICENSE" in head or "PERMISSION IS HEREBY GRANTED, FREE OF CHARGE" in head:
+                return "MIT License"
+            break
+
+    return "GNU General Public License v3.0"
+
+
 def read_gradle_description():
     if not os.path.exists("gradle.properties"):
         return ""
@@ -179,7 +204,7 @@ def main():
 
     sections.append(
         f"## License\n\n"
-        f"This project is open-source and licensed under the MIT License."
+        f"This project is open-source and licensed under the {detect_license(config)}."
     )
 
     readme = "\n\n".join(sections) + "\n"
