@@ -1,39 +1,34 @@
 name: Publish to platforms
 
-# Reusable publish workflow shared by every Slimefun plugin (core + addons).
-# Builds the jar once, stages a single clean copy, then publishes to Modrinth + Hangar and
-# (optionally) creates the GitHub release. Each platform is skipped if its credentials are unset:
-#   Secrets:   MODRINTH_TOKEN, HANGAR_TOKEN   (PAT optional, for cross-repo dependency reads)
-#   Variables: MODRINTH_ID (project slug), HANGAR_ID (project slug only)
-# SpigotMC has no upload API and cannot be automated here - upload that jar manually.
-#
-# NOTE: mc-publish does NOT support Hangar; Hangar uses milkdrinkers/Hangar-Publish.
+# Each platform is skipped when its credentials are unset: secrets MODRINTH_TOKEN / HANGAR_TOKEN,
+# variables MODRINTH_ID / HANGAR_ID. SpigotMC has no upload API and stays manual.
 
 on:
   workflow_call:
     inputs:
       project_name:
-        description: "Display name used for the release/version title"
+        description: 'Display name used for the release/version title'
         required: true
         type: string
       java_version:
+        description: 'Java version the build runs on'
         required: false
-        default: "21"
         type: string
+        default: '21'
       gradle_task:
-        description: "Gradle task that produces the shaded jar"
+        description: 'Gradle task that produces the shaded jar'
         required: false
-        default: "shadowJar"
         type: string
+        default: 'shadowJar'
       jar_dir:
-        description: "Directory containing the built jar (the shaded jar, minus -sources/-javadoc)"
+        description: 'Directory containing the built jar (the shaded jar, minus -sources/-javadoc)'
         required: false
-        default: "build/libs"
         type: string
+        default: 'build/libs'
       modrinth_game_versions:
+        description: 'Game versions tagged on Modrinth; it silently drops any it does not recognise'
         required: false
-        # The universal jar runs on 1.8 through the latest; list every release so Modrinth tags them
-        # all (it silently drops any it doesn't recognise). Hangar uses the >=1.8 range instead.
+        type: string
         default: |
           1.8
           1.8.1
@@ -109,28 +104,29 @@ on:
           26.1.1
           26.1.2
           26.2
-        type: string
       modrinth_loaders:
+        description: 'Loaders declared on the Modrinth version'
         required: false
+        type: string
         default: |
           paper
           spigot
           bukkit
-        type: string
       hangar_channel:
+        description: 'Hangar release channel'
         required: false
-        default: "Release"
         type: string
+        default: 'Release'
       hangar_platform_versions:
-        description: "JSON of Hangar platform -> supported version ranges"
+        description: 'JSON of Hangar platform to supported version ranges'
         required: false
-        default: '{"PAPER": [">=1.8"]}'
         type: string
+        default: '{"PAPER": [">=1.8"]}'
       github_release:
-        description: "Create the GitHub release here. Set false for dependency repos whose publish.yml already owns the release."
+        description: 'Create the GitHub release here; false when the caller already owns the release'
         required: false
-        default: true
         type: boolean
+        default: true
 
 jobs:
   publish:
@@ -138,13 +134,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ inputs.java_version }}
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: ${{ inputs.java_version }}
-          distribution: temurin
+          distribution: 'temurin'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -152,8 +149,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Strip a leading "v" from the tag so the version (and every artifact/display name derived from it)
-      # is clean: tag "v1.2.3" -> version "1.2.3". The tag itself is still used verbatim for tag_name.
       - name: Resolve version (strip leading v)
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
@@ -161,7 +156,6 @@ jobs:
       - name: Build jar (version from the release tag)
         run: ./gradlew ${{ inputs.gradle_task }} -Partifact_version=${{ steps.ver.outputs.version }} --no-daemon
         env:
-          # PAT covers cross-repo dependency reads (github-gradle release assets); falls back to the default token.
           GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
       - name: Stage a single clean jar
@@ -175,7 +169,7 @@ jobs:
           echo "file=$dest" >> "$GITHUB_OUTPUT"
           echo "Staged $jar -> $dest"
 
-      - name: Publish to Modrinth (skips if id/token unset)
+      - name: Publish to Modrinth
         if: ${{ vars.MODRINTH_ID != '' }}
         uses: Kir-Antipov/mc-publish@v3.3
         with:
@@ -197,9 +191,9 @@ jobs:
           name: ${{ inputs.project_name }} ${{ steps.ver.outputs.version }}
           generate_release_notes: true
 
-      # Hangar last: its version validation is the most finicky, so a Hangar failure must not
-      # block Modrinth or the GitHub release above.
-      - name: Publish to Hangar (skips if slug unset)
+      # Hangar last: its version validation is the most finicky, so a Hangar failure must not block
+      # Modrinth or the GitHub release above.
+      - name: Publish to Hangar
         if: ${{ vars.HANGAR_ID != '' }}
         uses: milkdrinkers/Hangar-Publish@v2
         with:
