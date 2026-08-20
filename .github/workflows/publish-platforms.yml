@@ -127,6 +127,11 @@ on:
         required: false
         type: boolean
         default: true
+      tag:
+        description: 'Release tag the version is taken from; empty takes the ref the run was started from'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   publish:
@@ -149,9 +154,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Resolve the release tag
+        id: tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: echo "name=${TAG:-$GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: Resolve version (strip leading v)
         id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build jar (version from the release tag)
         run: ./gradlew ${{ inputs.gradle_task }} -Partifact_version=${{ steps.ver.outputs.version }} --no-daemon
@@ -187,7 +200,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.stage.outputs.file }}
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.name }}
           name: ${{ inputs.project_name }} ${{ steps.ver.outputs.version }}
           generate_release_notes: true
 
