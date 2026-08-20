@@ -26,6 +26,8 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew build --no-daemon
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
