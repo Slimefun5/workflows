@@ -1,0 +1,35 @@
+name: Generate README
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: 'Repository name (e.g., Slimefun5/DynaTech)'
+        required: true
+        type: string
+  workflow_dispatch:
+
+jobs:
+  generate-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout stable branch
+        uses: actions/checkout@v4
+        with:
+          ref: stable
+
+      - name: Fetch generator script
+        run: curl -sL https://raw.githubusercontent.com/Slimefun5/workflows/stable/.github/scripts/generate-readme.py -o generate-readme.py
+
+      - name: Generate README.md
+        run: python3 generate-readme.py --repository "${{ inputs.repository || github.repository }}"
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: 'docs: auto-generate README.md [skip ci]'
+          add: 'README.md'
+          default_author: github_actions
