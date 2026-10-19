@@ -19,6 +19,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Download missing Gradle toolchains
+        uses: intisy/workflows/.github/actions/gradle-toolchains@main
+
       # slimefun-addon.gradle is applied over HTTP, and Gradle caches that fetch for 24h under
       # modules-2/resources-2.1. setup-gradle restores the whole Gradle home, so a convention
       # change (a core version bump, say) would otherwise never reach the runner.
